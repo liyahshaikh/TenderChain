@@ -14,7 +14,7 @@ contract BidderRepo {
 
     
 
-    function newContractor(address walletAddress, address nodeAddress) public returns (bool) {
+    function neBidder(address walletAddress, address nodeAddress) public returns (bool) {
         bidders.push(nodeAddress);
         //verifiedStatus[nodeAddress] = false;
         mapWalletAddressToNode(walletAddress,nodeAddress);
@@ -43,11 +43,11 @@ contract BidderRepo {
     //     return contratorToVerifier[contractorAddress];
     // }
 
-    function getContractors() public view returns (address[] memory) {
+    function getBidder() public view returns (address[] memory) {
         return bidders;
     }
 
-    function getContractorsCount() public view returns (uint256) {
+    function getBidderCount() public view returns (uint256) {
         return bidders.length;
     }
 
