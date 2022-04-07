@@ -122,7 +122,7 @@ contract Tender {
 
     function getVerifiedProposals(uint index) public returns (string[] memory, string[][] memory, address, uint[] memory) {
         //loop at web3
-        string[][] memory tempDocuments = new string[](5);
+        string[][] memory tempDocuments = new string[][](5);
         address tempAddresses;
         uint[] memory tempAmount;
         if (allBidderProposals[index].status == ProposalStatus.verified) {
