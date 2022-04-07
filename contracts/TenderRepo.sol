@@ -1,4 +1,3 @@
-
 //SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.13;
 pragma experimental ABIEncoderV2;
@@ -15,7 +14,7 @@ contract TenderRepo {
 
     mapping (address => TenderStatus) public tenderMapping;
 
-    constructor() public {
+    constructor()  {
         // see constructors later
     }
 
