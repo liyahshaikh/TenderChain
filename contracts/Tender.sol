@@ -1,140 +1,204 @@
-//SPDX-License-Identifier: UNLICENSED
-pragma solidity >=0.4.16 <0.9.0;
+pragma solidity ^0.5.0;
 
 contract Tender {
-    address public tenderManager;
-    string public tenderTitle; 
-    string tenderId;
-    string public tenderDescription; 
-    uint256 public bidSubmissionClosingDate;
-    uint256 public bidOpeningDate;
-    uint256 public covers;
-    string[] public clauses;
-    string[] public taskName;
-    uint256[] public taskDays;
-    string[] public constraints;
-    uint256 finalTenderAmount;
-    
-    struct BidderProposal {
-        address bidderAddress;
-        string[] quotationClause;
-        uint256[] quotationAmount;
-        uint256 proposalAmount;
-        string[] constraintDocuments;
-        ProposalStatus status;
-    }
-    enum ProposalStatus {
-        verified,
-        unverified,
-        rejected
+
+    address payable private owner;
+    string private projectDescription;
+    uint private deposit;
+    uint private biddingEnd;
+    uint private revelationEnd;
+    address private winner;
+    uint private highestBid;
+    bool private winnerExists;
+    bool private checkedByOwner;
+    mapping(address => closedBid) hashedBids;
+    mapping(address => bool) bidExists;
+    openBid[] private bidQueue;
+
+    event tenderEndsWithWinner(address winner, uint bid);
+    event tenderEndsWithoutWinner();
+
+    struct closedBid {
+        bytes32 hash;
+        uint time;
     }
 
-    BidderProposal[] public allBidderProposals;
-    mapping (address => ProposalStatus) isProposalVerified;
-
-    function setTenderBasic(address _tenderManager, string memory _tenderTitle, string memory _tenderId, string memory _tenderDescription,
-    uint256 _bidSubmissionClosingDate, uint256 _bidOpeningDate, uint256 _covers) public {
-        tenderManager = _tenderManager;   
-        tenderTitle = _tenderTitle;
-        tenderId=_tenderId;
-        tenderDescription = _tenderDescription;
-        bidSubmissionClosingDate = _bidSubmissionClosingDate;
-        bidOpeningDate = _bidOpeningDate;
-        covers = _covers;
-        finalTenderAmount = 0;
-    }
-    
-    function setTenderAdvanced(string[] memory _clauses,
-    string[] memory _taskName, uint256[] memory _taskDays,
-    string[] memory _constraints) public {
-        clauses = _clauses;
-        taskName = _taskName;
-        taskDays = _taskDays;
-        constraints = _constraints;
+    struct openBid {
+        uint amount;
+        uint time;
+        address payable owner;
     }
 
-    function getTenderBasic() public view returns (address, string memory, string memory,
-    uint, uint, uint) {
-        return (tenderManager, tenderTitle, tenderId, 
-        bidSubmissionClosingDate, bidOpeningDate, covers);
+    // Bidding duration in minutes
+    constructor(string memory desc, uint biddingDuration, uint revelationDuration, uint depositAmount) public {
+        owner = msg.sender;
+        projectDescription = desc;
+        biddingEnd = now + (biddingDuration * 1 minutes);
+        revelationEnd = biddingEnd + (revelationDuration * 1 minutes);
+        deposit = depositAmount; // Deposit in Ether
     }
 
-    function getTenderAdvanced() public view returns (string[] memory, string[] memory, uint256[] memory, string[] memory) {
-        return (clauses, taskName, taskDays, constraints );
+    modifier onlyBefore(uint time) {
+        require(now < time);
+        _;
     }
 
-    function bid(address _bidderAddress,
-    string[] memory _quotationClause, uint256[] memory _quotationAmount, string[] memory _constraintDocuments) public returns (bool) {
-        allBidderProposals.push();
-        BidderProposal storage temp = allBidderProposals[allBidderProposals.length];
-        temp.bidderAddress = _bidderAddress;
-        for (uint i=0; i < _quotationClause.length; i++) {
-            temp.quotationClause[i] = _quotationClause[i];
-            temp.quotationAmount[i] = _quotationAmount[i];
-            temp.proposalAmount += _quotationAmount[i];
+    modifier onlyAfter(uint time) {
+        require(now > time);
+        _;
+    }
+
+    modifier ownerOnly() {
+        require(owner == msg.sender);
+        _;
+    }
+
+    function hasBidBefore(address bidder) public view returns (bool) {
+        return bidExists[bidder];
+    }
+
+    function hasBeenChecked() public view onlyAfter(revelationEnd) returns (bool) {
+      return checkedByOwner;
+    }
+
+    function isOwner(address user) public view returns (bool) {
+      return (user == owner);
+    }
+
+    function hasWinner() public view onlyAfter(revelationEnd) returns (bool) {
+      require(checkedByOwner);
+      return winnerExists;
+    }
+
+    // Lets bidder submit hashed bids and ensures that bidders only make one bid each
+    function makeBid(bytes32 hashedBid) public payable onlyBefore(biddingEnd) {
+        if (hasBidBefore(msg.sender)) {
+            hashedBids[msg.sender] = closedBid(hashedBid, now);
+        } else {
+            require(msg.value >= (deposit * 1 ether), "Deposit amount is incorrect!");
+            hashedBids[msg.sender] = closedBid(hashedBid, now);
+            bidExists[msg.sender] = true;
         }
-        for (uint j=0; j < _constraintDocuments.length; j++) {
-            temp.constraintDocuments[j] = _constraintDocuments[j];
+    }
+
+    // Checks revealed bid and adds to priority queue
+    function revealBid(uint nonce, uint bidAmt) public onlyAfter(biddingEnd) onlyBefore(revelationEnd) {
+        require(hasBidBefore(msg.sender));
+
+        bytes memory toHash = abi.encodePacked(nonce, bidAmt);
+        bytes32 revealHash = keccak256(toHash);
+        closedBid memory closedBidOfSender = hashedBids[msg.sender];
+
+        require(revealHash == closedBidOfSender.hash, "Incorrect nonce and/or bid amount!");
+
+        openBid memory revealedBid = openBid(bidAmt, closedBidOfSender.time, msg.sender);
+        uint queueSize = bidQueue.length;
+        bool inserted = false;
+        openBid memory prevBid;
+        openBid memory temp;
+
+        for (uint i = 0; i < queueSize; i++) {
+            openBid memory currBid = bidQueue[i];
+            if (inserted) {
+                temp = prevBid;
+                prevBid = currBid;
+                bidQueue[i] = temp;
+            } else if ((bidAmt > currBid.amount) || ((bidAmt == currBid.amount) && (closedBidOfSender.time < currBid.time))) {
+                prevBid = currBid;
+                bidQueue[i] = revealedBid;
+                inserted = true;
+            } else {
+                // Does nothing
+            }
         }
-        temp.status = ProposalStatus.unverified;
-        return true;
-    }
 
-    function getBiddindCloseDate() public view returns (uint256) {
-        return bidSubmissionClosingDate;
-    }
-
-    function getProposalCount() public view returns (uint256) {
-        return allBidderProposals.length;
-    }
-
-    function setTenderAmount(uint256 amount) public {
-        if (amount != 0 && finalTenderAmount == 0)
-            finalTenderAmount = amount;
-    } 
-
-    function getProposalsToVerify(uint index) public returns (string[] memory, string[][] memory, address) {
-        //loop at web3
-        string[][] storage tempDocuments;
-
-        address tempAddresses;
-        if (allBidderProposals[index].status == ProposalStatus.unverified) {
-            tempDocuments.push(allBidderProposals[index].constraintDocuments);
-            tempAddresses = allBidderProposals[index].bidderAddress;
+        if (!inserted) { // Adds revealed bid to queue if not yet added
+            bidQueue.push(revealedBid);
+        } else { // Else adds the last bid back to queue
+            bidQueue.push(prevBid);
         }
-        return (constraints, tempDocuments, tempAddresses);
+
+        // Removes hashed bids from previous list to avoid sender revealing a valid bid more than once
+        delete hashedBids[msg.sender];
+        delete bidExists[msg.sender];
+
     }
 
-    function verifyProposal(address contractorAddress) public {
-        isProposalVerified[contractorAddress] = ProposalStatus.verified;
-    }
+    // Finds out which is the highest valid bid
+    function endRevelation() public ownerOnly onlyAfter(revelationEnd) {
+        require(!checkedByOwner);
+        if (bidQueue.length == 0) {
+            emit tenderEndsWithoutWinner();
+        } else {
+            openBid memory potentialWinningBid;
+            uint indexOfWinningBid = 0;
+            uint depositInWei = deposit * 1 ether;
+            while (!winnerExists && !(indexOfWinningBid >= bidQueue.length)) {
+                potentialWinningBid = bidQueue[indexOfWinningBid];
+                if ((potentialWinningBid.owner.balance - depositInWei) >= (potentialWinningBid.amount * 1 ether)) {
+                    winner = potentialWinningBid.owner;
+                    highestBid = potentialWinningBid.amount;
+                    winnerExists = true;
+                } else {
+                    indexOfWinningBid++;
+                }
+            }
 
-    function rejectProposal(address contractorAddress) public {
-        isProposalVerified[contractorAddress] = ProposalStatus.rejected;
-    }
+            // Returns deposit to only bidders with valid losing bids
+            openBid memory losingBid;
+            for (uint i = indexOfWinningBid + 1; i < bidQueue.length; i++) {
+                losingBid = bidQueue[i];
+                if ((losingBid.owner.balance - depositInWei) >= (losingBid.amount * 1 ether)) {
+                    losingBid.owner.transfer(depositInWei);
+                }
+            }
 
-    function getProposal(uint256 index) public view returns (address, uint256, string[] memory, uint256[] memory, ProposalStatus) {
-        if (index > allBidderProposals.length) revert();
-        return (allBidderProposals[index].bidderAddress, 
-        allBidderProposals[index].proposalAmount, allBidderProposals[index].quotationClause,
-        allBidderProposals[index].quotationAmount, allBidderProposals[index].status);
-    }
-
-    function getVerifiedProposals(uint index) public returns (string[] memory, string[][] memory, address, uint[] memory) {
-        //loop at web3
-        string[][] memory tempDocuments = new string[][](5);
-        address tempAddresses;
-        uint[] memory tempAmount;
-        if (allBidderProposals[index].status == ProposalStatus.verified) {
-            //This needs fixing, its broken. Too tired rn. 
-            tempDocuments.push(allBidderProposals[index].constraintDocuments);
-            tempAddresses = allBidderProposals[index].bidderAddress;
-            tempAmount = allBidderProposals[index].quotationAmount;
+            if (winnerExists) {
+                emit tenderEndsWithWinner(winner, highestBid);
+            } else {
+                emit tenderEndsWithoutWinner();
+            }
         }
-        return (constraints, tempDocuments, tempAddresses, tempAmount);
-    } 
 
+        checkedByOwner = true;
+    }
 
+    // Closes the tender
+    function close() public ownerOnly {
+        require(checkedByOwner);
+        selfdestruct(owner);
+    }
+
+    // Changes the details of the Tender project
+    function reopenTender(string memory desc, uint biddingDuration, uint revelationDuration, uint depositAmount) public ownerOnly {
+        require(checkedByOwner);
+        projectDescription = desc;
+        biddingEnd = now + (biddingDuration * 1 minutes);
+        revelationEnd = biddingEnd + (revelationDuration * 1 minutes);
+        deposit = depositAmount;
+        checkedByOwner = false;
+    }
+
+    // Gets the phase of the Tender bidding event
+    function getPhase() public view returns (string memory) {
+        if (now < biddingEnd) {
+            return 'Bidding';
+        } else if (now < revelationEnd) {
+            return 'Revelation';
+        } else {
+            return 'End';
+        }
+    }
+
+    // Gets details about the Tender project
+    function getProjectDetails() public view returns (string memory, uint, uint, uint) {
+        return (projectDescription, deposit, biddingEnd, revelationEnd);
+    }
+
+    // Gets the result after revelation period
+    function getResults() public view onlyAfter(revelationEnd) returns (address, uint) {
+        require(checkedByOwner);
+        return (winner, highestBid);
+    }
 
 }
-
