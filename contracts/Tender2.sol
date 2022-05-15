@@ -178,15 +178,10 @@ contract Tender{
     // add functionality : no two tenders can be the same 
     // modifier to be added : only a contractor can create a tender 
 
-    function createTender(string memory _tenderName, string memory _tenderDescription,uint256 _bidOpeningDate,  uint256 _bidSubmissionClosingDate, string _tenderDescription ,uint256 _finalTenderAmount) public  {
-        if (tenderExists[_id]!= true){
+    function createTender(string memory _tenderName, string memory _tenderDescription,uint256 _bidOpeningDate,  uint256 _bidSubmissionClosingDate, string _tenderDescription ,uint256 _finalTenderAmount) public alreadyPresentTender(uint _id) {
             tenderCount++;
             tenders[tenderCount] = Tender(tenderCount, _tenderName , _tenderDescription, _bidOpeningDate, _bidSubmissionClosingDate, _tenderDescription, _finalTenderAmount, msg.sender);
-            tenderExists[_id]= true; // this line 
-        }
-        else{
-            require(tenderExists[_id] == true, "Tender already exists");
-        }   
+            idToTenders[_id]= true; 
     }
 
     function createBid() public {}
