@@ -16,11 +16,25 @@ contract Tender{
     struct Contractor {
         uint id;
         string contractorCompany;
+        // address accountAddress;
+        string accountName;
+        AccountType accountType;
+        // string userAddress;
+        uint contractorContactNumber;
+        string contractorEmail;
+        bool exists;
     }
 
     struct Bidder{
         uint id;
-        string companyName;
+        string bidderCompany;
+        // address accountAddress;
+        string accountName;
+        AccountType accountType;
+        // string userAddress;
+        uint bidderContactNumber;
+        string bidderEmail;
+        bool exists;
 
     }
 
@@ -32,6 +46,7 @@ contract Tender{
         address bidder;
         uint timeStamp;
         BidStatus status;
+        bool exists;
     }
 
     struct Tender{
@@ -42,18 +57,19 @@ contract Tender{
         uint256 bidRevelationDay;
         uint256 finalTenderAmount;
         string tenderDescription;
-
-    }
-
-    struct User{
-        address accountAddress;
-        string accountName;
-        AccountType accountType;
-        string userAddress;
-        uint userContactNumber;
-        string userEmail;
         bool exists;
+
     }
+
+    // struct User{
+    //     address accountAddress;
+    //     string accountName;
+    //     AccountType accountType;
+    //     string userAddress;
+    //     uint userContactNumber;
+    //     string userEmail;
+    //     bool exists;
+    // }
 
     enum AccountType{
         Bidder,
@@ -73,13 +89,13 @@ contract Tender{
         rejected   
     }
 
-    mapping (uint => Tender) public tenders;
-    mapping (uint => Bid) public bids;
+    mapping (uint => Tender) public idToTenders;
+    mapping (uint => Bid) public idToBids;
     mapping (uint => address) public whoIsContractor;
     mapping (uint => address) public whoIsBidder;
-    mapping (address => Contractor) public contractors;
-    mapping (address => Bidder) public bidders;
-    mapping (address => bool) public bidExists;
+    mapping (uint => Contractor) public idToContractors;
+    mapping (uint => Bidder) public idToBidders;
+    mapping (uint => bool) public bidExists;
     mapping (uint => bool) public tenderExists; // see this aliya
 
     // contractor and bidder should be unique
@@ -100,19 +116,23 @@ contract Tender{
     
     
     // fix needed for this modifier
-    modifier alreadyPresesntTender(uint _id){
-        require(!tenderExists[_id],
+    modifier alreadyPresentTender(uint _id){
+        require(!idToTenders[_id],
         "Tender already exists");
         _;
 
     }
     // modifier to be wriiten
-    modifier onlyContractor(){
+    modifier onlyContractor(uint _id){
+        require(!idToContractors[_id].exists, "Contractor already exists!");
+        _;
 
     }
 
     // modifier to be wriiten
-    modifier onlyBidder(){
+    modifier onlyBidder(uint _id){
+        require(!idToBidders[_id].exists, "Bidder already exists!");
+        _;
 
     }
 
@@ -127,10 +147,12 @@ contract Tender{
     }
 
     function hasBidBefore(address bidder) public view returns (bool) {
-        ;
+        require(!idToBids[bidder].exists, "Bid already exists!");
+        _;
+        
     }
     
-    function hasBeenChecked() public view onlyAfter(revelationEnd) returns (bool) {
+    function hasBeenChecked() public view returns (bool) {
       return checkedByOwner;
     }
 
@@ -141,7 +163,7 @@ contract Tender{
         return hash;
     }
     
-    function createContractor(string memory _username,) public alreadyPresent(msg.sender) {
+    function createContractor(string memory _username) public alreadyPresent(msg.sender) {
         contractorCount++;
         whoIsContractor[contractorCount] = msg.sender;
         contractors[msg.sender] = Contractor(contractorCount, _username);
@@ -157,7 +179,7 @@ contract Tender{
     // modifier to be added : only a contractor can create a tender 
 
     function createTender(string memory _tenderName, string memory _tenderDescription,uint256 _bidOpeningDate,  uint256 _bidSubmissionClosingDate, string _tenderDescription ,uint256 _finalTenderAmount) public  {
-        if (tenderExists[_id]! = true){
+        if (tenderExists[_id]!= true){
             tenderCount++;
             tenders[tenderCount] = Tender(tenderCount, _tenderName , _tenderDescription, _bidOpeningDate, _bidSubmissionClosingDate, _tenderDescription, _finalTenderAmount, msg.sender);
             tenderExists[_id]= true; // this line 
@@ -167,15 +189,7 @@ contract Tender{
         }   
     }
 
-    function createBid()
-
-
-
-
-
-
-
-
+    function createBid() public {}
 
 
 }
