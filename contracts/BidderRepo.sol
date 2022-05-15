@@ -1,5 +1,5 @@
 //SPDX-License-Identifier: UNLICENSED
-pragma solidity ^0.8.13;
+pragma solidity ^0.5.16;
 pragma experimental ABIEncoderV2;
 
 contract BidderRepo {
@@ -14,7 +14,7 @@ contract BidderRepo {
 
     
 
-    function neBidder(address walletAddress, address nodeAddress) public returns (bool) {
+    function newBidder(address walletAddress, address nodeAddress) public returns (bool) {
         bidders.push(nodeAddress);
         //verifiedStatus[nodeAddress] = false;
         mapWalletAddressToNode(walletAddress,nodeAddress);

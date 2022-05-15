@@ -1,5 +1,5 @@
 //SPDX-License-Identifier: UNLICENSED
-pragma solidity >=0.4.16 <0.9.0;
+pragma solidity ^0.5.16;
 
 contract Tender {
     address public tenderManager;
@@ -32,6 +32,9 @@ contract Tender {
     BidderProposal[] public allBidderProposals;
     mapping (address => ProposalStatus) isProposalVerified;
 
+    constructor () public{
+        
+    }
     function setTenderBasic(address _tenderManager, string memory _tenderTitle, string memory _tenderId, string memory _tenderDescription,
     uint256 _bidSubmissionClosingDate, uint256 _bidOpeningDate, uint256 _covers) public {
         tenderManager = _tenderManager;   
@@ -93,21 +96,21 @@ contract Tender {
             finalTenderAmount = amount;
     } 
 
-    function getProposalsToVerify(uint index) public returns (string[] memory, string[][] memory, address) {
-        //loop at web3
-        string[][] storage tempDocuments;
+    // function getProposalsToVerify(uint index) public returns (string[] memory, string[][] memory, address) {
+    //     //loop at web3
+    //     string[][] storage tempDocuments;
 
-        address tempAddresses;
-        if (allBidderProposals[index].status == ProposalStatus.unverified) {
-            tempDocuments.push(allBidderProposals[index].constraintDocuments);
-            tempAddresses = allBidderProposals[index].bidderAddress;
-        }
-        return (constraints, tempDocuments, tempAddresses);
-    }
+    //     address tempAddresses;
+    //     if (allBidderProposals[index].status == ProposalStatus.unverified) {
+    //         tempDocuments.push(allBidderProposals[index].constraintDocuments);
+    //         tempAddresses = allBidderProposals[index].bidderAddress;
+    //     }
+    //     return (constraints, tempDocuments, tempAddresses);
+    // }
 
-    function verifyProposal(address contractorAddress) public {
-        isProposalVerified[contractorAddress] = ProposalStatus.verified;
-    }
+    // function verifyProposal(address contractorAddress) public {
+    //     isProposalVerified[contractorAddress] = ProposalStatus.verified;
+    // }
 
     function rejectProposal(address contractorAddress) public {
         isProposalVerified[contractorAddress] = ProposalStatus.rejected;
@@ -120,19 +123,19 @@ contract Tender {
         allBidderProposals[index].quotationAmount, allBidderProposals[index].status);
     }
 
-    function getVerifiedProposals(uint index) public returns (string[] memory, string[][] memory, address, uint[] memory) {
-        //loop at web3
-        string[][] memory tempDocuments = new string[][](5);
-        address tempAddresses;
-        uint[] memory tempAmount;
-        if (allBidderProposals[index].status == ProposalStatus.verified) {
-            //This needs fixing, its broken. Too tired rn. 
-            tempDocuments.push(allBidderProposals[index].constraintDocuments);
-            tempAddresses = allBidderProposals[index].bidderAddress;
-            tempAmount = allBidderProposals[index].quotationAmount;
-        }
-        return (constraints, tempDocuments, tempAddresses, tempAmount);
-    } 
+    // function getVerifiedProposals(uint index) public returns (string[] memory, string[][] memory, address, uint[] memory) {
+    //     //loop at web3
+    //     string[][] memory tempDocuments = new string[][](5);
+    //     address tempAddresses;
+    //     uint[] memory tempAmount;
+    //     if (allBidderProposals[index].status == ProposalStatus.verified) {
+    //         //This needs fixing, its broken. Too tired rn. 
+    //         tempDocuments.push(allBidderProposals[index].constraintDocuments);
+    //         tempAddresses = allBidderProposals[index].bidderAddress;
+    //         tempAmount = allBidderProposals[index].quotationAmount;
+    //     }
+    //     return (constraints, tempDocuments, tempAddresses, tempAmount);
+    // } 
 
 
 
