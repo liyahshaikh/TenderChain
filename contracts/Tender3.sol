@@ -1,4 +1,4 @@
-pragma solidity >=0.4.0;
+pragma solidity ^0.4.24;
 pragma experimental ABIEncoderV2;
 
 contract Tender{
@@ -41,7 +41,7 @@ contract Tender{
         BidStatus status;
     }
 
-    struct Tender{
+    struct Tenders{
         bytes32 tenderId;
         string tenderName;
         address companyId; 
@@ -73,7 +73,6 @@ contract Tender{
     mapping (address => Bidder) public bidders;
     mapping (address => bool) public bidExists;
     mapping (address=> Tender) public bidToTender; // see this 
-    mapping()
 
     // contractor and bidder should be unique
     modifier alreadyPresent(address _address) {
@@ -83,8 +82,8 @@ contract Tender{
             }
         }
 
-        for(uint i = 1; i <= bidderCount; i++) {
-            if(whoIsBidder[i] == _address) {
+        for(uint j = 1; j <= bidderCount; j++) {
+            if(whoIsBidder[j] == _address) {
                 require(1 == 2, "Address already present");
             }
         }
@@ -93,15 +92,15 @@ contract Tender{
     
     
     // fix needed for this modifier
-    modifier alreadyPresentTender(uint _id){
-        require(!tenders[_id].exists,
+    modifier alreadyPresentTender(bytes32 _id){
+        require(!tenders[_id].exist,
         "Tender already exists");
         _;
 
     }
 
     // how to use? 
-    function generateForTenderorBid(string memory _tenderName) public view returns (bytes32) {
+    function generateForTenderorBid(string _tenderName) public view returns (bytes32) {
         return keccak256(abi.encodePacked(_tenderName));
         
     }
@@ -130,13 +129,13 @@ contract Tender{
     // add functionality : no two tenders can be the same 
     // modifier to be added : only a contractor can create a tender 
 
-    function createTender(string memory _tenderDescription,uint256 _bidOpeningDate,  uint256 _bidSubmissionClosingDate) public {
+    function createTender(string memory _tenderDescription,bytes32 tender_id,string tenderName, uint256 _bidOpeningDate,  uint256 _bidSubmissionClosingDate) public {
         
         tenderName = contractors[msg.sender].contractorName;
         tender_id = generateForTenderorBid(tenderName);
         require(!tenders[tender_id].exist,"Tender already exists");
         tenders[tender_id].tenderId = tender_id;
-        tenders[tender_id].tenderName = _tenderName;
+        tenders[tender_id].tenderName = tenderName;
         tenders[tender_id].tenderDescription = _tenderDescription;
         tenders[tender_id].bidOpeningDate = _bidOpeningDate;
         tenders[tender_id].bidSubmissionClosingDate = _bidSubmissionClosingDate;
@@ -145,12 +144,11 @@ contract Tender{
 
     }
 
-    function createBid(bytes32 _tenderId,string _tenderName, uint _bidAmount) public {
+    function createBid(string bidName, bytes32 _tenderId,bytes32 bid_id, string _tenderName, uint _bidAmount) public {
         bidName = bidders[msg.sender].companyName;
         bid_id = generateForTenderorBid((bidName));
         require(!bids[bid_id].exists," Only one bid can be placed by a bidder");
         require(now < tenders[_tenderId].bidSubmissionClosingDate, " Sorry, the bidding period is over");
-        bids[bidId]=
         bids[bid_id].tenderName = tenders[_tenderId].tenderName;
         bids[bid_id].bidAmount = _bidAmount;
         bids[bid_id].timeStamp = now;
