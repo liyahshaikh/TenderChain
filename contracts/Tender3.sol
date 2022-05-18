@@ -7,6 +7,8 @@ contract Tender{
     uint public bidCount = 0;
     uint public contractorCount = 0;
     uint public bidderCount = 0;
+    address public contractor;
+    address public bidder;
     address private winner;
     uint private highestBid;
 
@@ -24,13 +26,13 @@ contract Tender{
     struct Bidder{
         uint bidderId;
         string companyName;
-
         string emailId;
         uint phoneNumber;
 
     }
 
     struct Bid{
+        bytes32 bidId;
         bytes32 tenderId;
         string tenderName;
         uint bidAmount;
@@ -64,13 +66,14 @@ contract Tender{
     }
 
     mapping (bytes32 => Tender) public tenders; 
-    mapping (uint => Bid) public bids;    
+    mapping (bytes32 => Bid) public bids;    
     mapping (uint => address) public whoIsContractor;
     mapping (uint => address) public whoIsBidder;
     mapping (address => Contractor) public contractors;
     mapping (address => Bidder) public bidders;
     mapping (address => bool) public bidExists;
     mapping (address=> Tender) public bidToTender; // see this 
+    mapping()
 
     // contractor and bidder should be unique
     modifier alreadyPresent(address _address) {
@@ -96,29 +99,6 @@ contract Tender{
         _;
 
     }
-    // modifier to be wriiten
-    modifier onlyContractor(){
-
-    }
-
-    // modifier to be wriiten
-    modifier onlyBidder(){
-
-    }
-
-    modifier onlyBefore(uint id, uint time) {
-        require(Tender[id].bidOpeningDate > time, " The tender is now closed and is no longer accepting bids");
-        _;
-    }
-
-    modifier onlyAfter(uint time) {
-        require(now > time);
-        _;
-    }
-    
-    function hasBeenChecked() public view onlyAfter(revelationEnd) returns (bool) {
-      return checkedByOwner;
-    }
 
     // how to use? 
     function generateForTenderorBid(string memory _tenderName) public view returns (bytes32) {
@@ -129,7 +109,6 @@ contract Tender{
     function createContractor(string _contractorName,uint _contractorId,string _emailId, uint _phoneNumber, string _username) public alreadyPresent(msg.sender) {
         contractorCount++;
         whoIsContractor[contractorCount] = msg.sender;
-        contractors[msg.sender].companyId = msg.sender; // we need this
         contractors[msg.sender].username= _username;
         contractors[msg.sender].contractorName = _contractorName;
         contractors[msg.sender].emailId = _emailId;
@@ -153,7 +132,7 @@ contract Tender{
 
     function createTender(string memory _tenderDescription,uint256 _bidOpeningDate,  uint256 _bidSubmissionClosingDate) public {
         
-        tenderName = contractors[msg.sender].username;
+        tenderName = contractors[msg.sender].contractorName;
         tender_id = generateForTenderorBid(tenderName);
         require(!tenders[tender_id].exist,"Tender already exists");
         tenders[tender_id].tenderId = tender_id;
@@ -163,30 +142,38 @@ contract Tender{
         tenders[tender_id].bidSubmissionClosingDate = _bidSubmissionClosingDate;
         tenders[tender_id].companyId = msg.sender;
 
+
     }
 
-    function createBid(string _tenderName, uint _bidAmount , address _companyAddress, uint _timeStamp, uint256 _bidSubmissionClosingDate ) public onlyBefore(_tenderId, _timestamp ) {
-        bidName = bidders[msg.sender].username;
+    function createBid(bytes32 _tenderId,string _tenderName, uint _bidAmount) public {
+        bidName = bidders[msg.sender].companyName;
         bid_id = generateForTenderorBid((bidName));
         require(!bids[bid_id].exists," Only one bid can be placed by a bidder");
-        require(now < _timeStamp, " Sorry, the bidding period is over");
-        bids[bid_id].tenderName = 
+        require(now < tenders[_tenderId].bidSubmissionClosingDate, " Sorry, the bidding period is over");
+        bids[bidId]=
+        bids[bid_id].tenderName = tenders[_tenderId].tenderName;
         bids[bid_id].bidAmount = _bidAmount;
-
-
-
-                
+        bids[bid_id].timeStamp = now;
+        bids[bid_id].status = BidStatus.processing; // check syntax
 
     }
 
-    function approveBid(){
-
+    function approveBid(bytes32 bid_id){
+        bids[bid_id].status = BidStatus.approved;
     }
+
     function rejectBid(){
+        bids[bid_id].status = BidStatus.rejected;
         
     }
     function negotiateBid(){
+        bids[bid_id].status = BidStatus.negotiate;
         
+    }
+
+    function getWinner(bytes32 bid_id){
+        
+
     }
 
 
