@@ -48,6 +48,7 @@ contract Tender{
         uint256 bidSubmissionClosingDate; 
         uint256 bidOpeningDate;
         string tenderDescription;
+        bool exists
 
     }
 
@@ -93,7 +94,7 @@ contract Tender{
     
     // fix needed for this modifier
     modifier alreadyPresentTender(bytes32 _id){
-        require(!tenders[_id].exist,
+        require(!tenders[_id].exists,
         "Tender already exists");
         _;
 
