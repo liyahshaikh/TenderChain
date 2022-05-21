@@ -1,7 +1,7 @@
 pragma solidity ^0.4.24;
 pragma experimental ABIEncoderV2;
 
-contract Tender{
+contract TenderChain{
 
     uint public tenderCount = 0;
     uint public bidCount = 0;
@@ -14,9 +14,11 @@ contract Tender{
 
     event tenderEndsWithWinner(address winner, uint bid);
     event tenderEndsWithoutWinner();
+    event ContractorAdded(address indexed account);
+    event BidderAdded(address indexed account);
 
     struct Contractor {
-        uint companyId;
+        uint companyId; //should this be contractorId?
         string contractorName;
         string emailId;
         uint phoneNumber;
@@ -41,14 +43,14 @@ contract Tender{
         BidStatus status;
     }
 
-    struct Tenders{
+    struct Tender{
         bytes32 tenderId;
         string tenderName;
         address companyId; 
         uint256 bidSubmissionClosingDate; 
         uint256 bidOpeningDate;
         string tenderDescription;
-        bool exists
+        bool exists;
 
     }
 
@@ -90,7 +92,20 @@ contract Tender{
         }
         _;
     }
-    
+    modifier onlyContractor() {
+        require(contractors.has(msg.sender),
+        "Contractor Only Access!");
+        _;
+    }
+    modifier onlyBidder() {
+        require(bidders.has(msg.sender),
+        "Bidder Only Access");
+    }
+
+    function randomNumberGenerator() public view returns (uint randomNumber){
+        randomNumber = uint(keccak256(abi.encodePacked(now)))%100000;
+        return (randomNumber);
+    }
     
     // fix needed for this modifier
     modifier alreadyPresentTender(bytes32 _id){
@@ -130,9 +145,9 @@ contract Tender{
     // add functionality : no two tenders can be the same 
     // modifier to be added : only a contractor can create a tender 
 
-    function createTender(string memory _tenderDescription,bytes32 tender_id,string tenderName, uint256 _bidOpeningDate,  uint256 _bidSubmissionClosingDate) public {
+    function createTender(string memory _tenderDescription,bytes32 tender_id,string tenderName, uint256 _bidOpeningDate,  uint256 _bidSubmissionClosingDate) public onlyContractor() {
         
-        tenderName = contractors[msg.sender].contractorName;
+        //tenderName = contractors[msg.sender].contractorName; we already have tender name in the parameters.
         tender_id = generateForTenderorBid(tenderName);
         require(!tenders[tender_id].exist,"Tender already exists");
         tenders[tender_id].tenderId = tender_id;
@@ -145,9 +160,10 @@ contract Tender{
 
     }
 
-    function createBid(string bidName, bytes32 _tenderId,bytes32 bid_id, string _tenderName, uint _bidAmount) public {
+    function createBid(string bidName, bytes32 _tenderId,bytes32 bid_id, string _tenderName, uint _bidAmount) public onlyBidder() {
         bidName = bidders[msg.sender].companyName;
-        bid_id = generateForTenderorBid((bidName));
+        //Check this.
+        bid_id = generateForTenderorBid((bidName + string(_tenderId)));
         require(!bids[bid_id].exists," Only one bid can be placed by a bidder");
         require(now < tenders[_tenderId].bidSubmissionClosingDate, " Sorry, the bidding period is over");
         bids[bid_id].tenderName = tenders[_tenderId].tenderName;
@@ -157,31 +173,29 @@ contract Tender{
 
     }
 
-    function approveBid(bytes32 bid_id){
+    function approveBid(bytes32 bid_id) onlyContractor() {
         bids[bid_id].status = BidStatus.approved;
     }
 
-    function rejectBid(){
+    function rejectBid() onlyContractor() {
         bids[bid_id].status = BidStatus.rejected;
         
     }
-    function negotiateBid(){
+    function negotiateBid() onlyContractor() {
         bids[bid_id].status = BidStatus.negotiate;
         
     }
 
     function getWinner(bytes32 bid_id){
-        
+        if (bids[bid_id].status == BidStatus.approved) {
+            winner = bids[bid_id].companyAddress;
+            emit tenderEndsWithWinner(winner, bid_id);
+        }
+        else {
+            emit tenderEndsWithoutWinner();
+        }
 
     }
-
-
-
-
-
-
-
-
 
 
 }
