@@ -12,10 +12,11 @@ contract TenderChain{
     address private winner;
     uint private highestBid;
 
+
     event tenderEndsWithWinner(address winner, uint bid);
     event tenderEndsWithoutWinner();
-    event ContractorAdded(address indexed account);
-    event BidderAdded(address indexed account);
+    event ContractorAdded(address account);
+    event BidderAdded(address account);
 
     struct Contractor {
         uint companyId; //should this be contractorId?
@@ -128,6 +129,7 @@ contract TenderChain{
         contractors[msg.sender].contractorName = _contractorName;
         contractors[msg.sender].emailId = _emailId;
         contractors[msg.sender].phoneNumber = _phoneNumber;
+        emit ContractorAdded(msg.sender);
 
     }
 
@@ -139,13 +141,14 @@ contract TenderChain{
         bidders[msg.sender].username= _username;
         bidders[msg.sender].emailId = _emailId;
         bidders[msg.sender].phoneNumber= _phoneNumber;
+        emit BidderAdded(msg.sender);
 
     }
     
     // add functionality : no two tenders can be the same 
     // modifier to be added : only a contractor can create a tender 
 
-    function createTender(string memory _tenderDescription,bytes32 tender_id,string tenderName, uint256 _bidOpeningDate,  uint256 _bidSubmissionClosingDate) public onlyContractor() {
+    function createTender(string memory _tenderDescription, string tenderName, uint256 _bidOpeningDate,  uint256 _bidSubmissionClosingDate) public onlyContractor() {
         
         //tenderName = contractors[msg.sender].contractorName; we already have tender name in the parameters.
         tender_id = generateForTenderorBid(tenderName);
