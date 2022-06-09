@@ -163,11 +163,11 @@ contract TenderChain{
 
     }
 
-    function createBid(string bidName, bytes32 _tenderId,bytes32 bid_id, string _tenderName, uint _bidAmount) public onlyBidder() {
+    function createBid( bytes32 _tenderId, uint _bidAmount) public onlyBidder() {
         bidName = bidders[msg.sender].companyName;
         //Check this.
         bid_id = generateForTenderorBid((bidName + string(_tenderId)));
-        require(!bids[bid_id].exists," Only one bid can be placed by a bidder");
+        require(!bids[bid_id].exists," Only one bid can be placed by a bidder per tender");
         require(now < tenders[_tenderId].bidSubmissionClosingDate, " Sorry, the bidding period is over");
         bids[bid_id].tenderName = tenders[_tenderId].tenderName;
         bids[bid_id].bidAmount = _bidAmount;
