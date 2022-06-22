@@ -1,45 +1,41 @@
-pragma solidity ^0.4.24;
+pragma solidity >=0.4.0;
 pragma experimental ABIEncoderV2;
 
-contract TenderChain{
+contract Tender{
 
     uint public tenderCount = 0;
     uint public bidCount = 0;
-    uint public contractorCount = 0;
+    uint public organisationCount = 0;
     uint public bidderCount = 0;
-    address public contractor;
+    address public organisation;
     address public bidder;
     address private winner;
     uint private highestBid;
 
-
-    event tenderEndsWithWinner(address winner, uint bid);
-    event tenderEndsWithoutWinner();
-    event ContractorAdded(address account);
-    event BidderAdded(address account);
-
-    struct Contractor {
-        uint companyId; //should this be contractorId?
-        string contractorName;
+    struct Organisation {
+        uint organisationId;
+        string organisationName;
+        address organisation;
         string emailId;
         uint phoneNumber;
 
     }
 
     struct Bidder{
-        uint bidderId;
-        string companyName;
+        uint bidderId; // need?
+        address bidder;
+        string bidOrganisationName;
         string emailId;
         uint phoneNumber;
 
     }
 
     struct Bid{
-        bytes32 bidId;
+        bytes32 bidId; //need?
         bytes32 tenderId;
         string tenderName;
         uint bidAmount;
-        address companyAddress;
+        address organisation;
         uint timeStamp;
         BidStatus status;
     }
@@ -47,11 +43,10 @@ contract TenderChain{
     struct Tender{
         bytes32 tenderId;
         string tenderName;
-        address companyId; 
+        address organisation; 
         uint256 bidSubmissionClosingDate; 
         uint256 bidOpeningDate;
         string tenderDescription;
-        bool exists;
 
     }
 
@@ -69,136 +64,151 @@ contract TenderChain{
         rejected   
     }
 
+    enum TenderStatus{
+        open,
+        close
+    }
+
     mapping (bytes32 => Tender) public tenders; 
     mapping (bytes32 => Bid) public bids;    
-    mapping (uint => address) public whoIsContractor;
-    mapping (uint => address) public whoIsBidder;
-    mapping (address => Contractor) public contractors;
+    mapping (address => string) public whoIsorganisation;
+    mapping (address => string) public whoIsBidder;
+    mapping (address => organisation) public organisations;
     mapping (address => Bidder) public bidders;
     mapping (address => bool) public bidExists;
     mapping (address=> Tender) public bidToTender; // see this 
+    
+    event OrganisationAdded(address indexed organistaion, string indexed organisationName, string emailId, uint phoneNumber, string username)
+    event BidderAdded(address indexed bidderId, string bidOrganisationName, string emailId,uint phoneNumber,string username)
+    event TenderAdded(address indexed organisation, string indexed tenderName, uint256 bidSubmissionClosingDate, uint256 bidOpeningDate, string tenderDescription)
+    event BidAdded(address indexed bidder, bytes32 indexed bidId, uint256 bidAmount, BidStatus currentstatus, uint timeStamp)
+    event BidStatusChanged(bytes32 indexed bidId, BidStatus currentstatus)
+    event TenderStatusChanged(bytes32 indexed tenderid, TenderStatus currentstatus)
 
-    // contractor and bidder should be unique
+    // organisation and bidder should be unique
     modifier alreadyPresent(address _address) {
-        for(uint i = 1; i <= contractorCount; i++) {
-            if(whoIsContractor[i] == _address) {
+        for(uint i = 1; i <= organisationCount; i++) {
+            if(whoIsorganisation[i] == address) {
                 require(1 == 2, "Address already present");
             }
         }
 
-        for(uint j = 1; j <= bidderCount; j++) {
-            if(whoIsBidder[j] == _address) {
+        for(uint i = 1; i <= bidderCount; i++) {
+            if(whoIsBidder[i] == _address) {
                 require(1 == 2, "Address already present");
             }
         }
-        _;
-    }
-    modifier onlyContractor() {
-        require(contractors.has(msg.sender),
-        "Contractor Only Access!");
-        _;
-    }
-    modifier onlyBidder() {
-        require(bidders.has(msg.sender),
-        "Bidder Only Access");
-    }
-
-    function randomNumberGenerator() public view returns (uint randomNumber){
-        randomNumber = uint(keccak256(abi.encodePacked(now)))%100000;
-        return (randomNumber);
+        ;
     }
     
+    
     // fix needed for this modifier
-    modifier alreadyPresentTender(bytes32 _id){
-        require(!tenders[_id].exists,
+    modifier alreadyPresentTender(bytes32 id){
+        require(!tenders[id].exists,
         "Tender already exists");
-        _;
+        ;
 
     }
 
     // how to use? 
-    function generateForTenderorBid(string _tenderName) public view returns (bytes32) {
-        return keccak256(abi.encodePacked(_tenderName));
+    function generateForTender(string memory tenderName, address organisation ) public view returns (bytes32) {
+        return keccak256(abi.encodePacked(tenderName));
         
     }
+    function generateForBid( bytes32 tenderId,  address bidOrganisation) public pure returns (bytes32) {
+     return keccak256(abi.encodePacked(tenderName, bidOrganisation));
+}
     
-    function createContractor(string _contractorName,uint _contractorId,string _emailId, uint _phoneNumber, string _username) public alreadyPresent(msg.sender) {
-        contractorCount++;
-        whoIsContractor[contractorCount] = msg.sender;
-        contractors[msg.sender].username= _username;
-        contractors[msg.sender].contractorName = _contractorName;
-        contractors[msg.sender].emailId = _emailId;
-        contractors[msg.sender].phoneNumber = _phoneNumber;
-        emit ContractorAdded(msg.sender);
+    function createorganisation(string organisationName, string emailId, uint phoneNumber, string username) public alreadyPresent(msg.sender) {
+        organisationCount++;
+        whoIsorganisation[organisationCount] = msg.sender;
+        organisations[msg.sender].organisations = msg.sender;
+        organisations[msg.sender].username= username;
+        organisations[msg.sender].organisationName = organisationName;
+        organisations[msg.sender].emailId = emailId;
+        organisations[msg.sender].phoneNumber = phoneNumber;
+
+        emit OrganisationAdded(msg.sender, organisationName, emailId, phoneNumber, username)
 
     }
 
-    function createBidder(string memory _companyName, address _bidderId,string _emailId,uint _phoneNumber,string _username) public alreadyPresent(msg.sender) {
+    function createBidder(string memory organisationName, address bidderId,string emailId,uint phoneNumber,string username) public alreadyPresent(msg.sender) {
         bidderCount++;
         whoIsBidder[bidderCount] = msg.sender;
-        bidders[msg.sender].companyName = _companyName;
-        bidders[msg.sender].bidderId = msg.sender;
-        bidders[msg.sender].username= _username;
-        bidders[msg.sender].emailId = _emailId;
-        bidders[msg.sender].phoneNumber= _phoneNumber;
-        emit BidderAdded(msg.sender);
+        bidders[msg.sender].bidorganisationName = bidorganisationName;
+        bidders[msg.sender].bidder = msg.sender;
+        bidders[msg.sender].username= username;
+        bidders[msg.sender].emailId = emailId;
+        bidders[msg.sender].phoneNumber= phoneNumber;
+
+        emit BidderAdded(msg.sender, bidOrganisationName, emailId, phoneNumber, username)
 
     }
     
     // add functionality : no two tenders can be the same 
-    // modifier to be added : only a contractor can create a tender 
+    // modifier to be added : only a organisation can create a tender 
 
-    function createTender(string memory _tenderDescription, string tenderName, uint256 _bidOpeningDate,  uint256 _bidSubmissionClosingDate) public onlyContractor() {
+    function createTender(string tenderName, string memory tenderDescription,uint256 bidOpeningDate, uint256 bidSubmissionClosingDate) public {
         
-        //tenderName = contractors[msg.sender].contractorName; we already have tender name in the parameters.
-        tender_id = generateForTenderorBid(tenderName);
-        require(!tenders[tender_id].exist,"Tender already exists");
-        tenders[tender_id].tenderId = tender_id;
-        tenders[tender_id].tenderName = tenderName;
-        tenders[tender_id].tenderDescription = _tenderDescription;
-        tenders[tender_id].bidOpeningDate = _bidOpeningDate;
-        tenders[tender_id].bidSubmissionClosingDate = _bidSubmissionClosingDate;
-        tenders[tender_id].companyId = msg.sender;
+        tenderid = generateForTenderorBid(tenderName, msg.sender); // hash for tender name and address?
+        require(!tenders[tenderid].exist,"Tender already exists");
+        tenders[tenderid].tenderId = tenderid;
+        tenders[tenderid].tenderName = tenderName;
+        tenders[tenderid].tenderDescription = tenderDescription;
+        tenders[tenderid].bidOpeningDate = bidOpeningDate;
+        tenders[tenderid].bidSubmissionClosingDate = bidSubmissionClosingDate;
+        tenders[tenderid].organisationId = msg.sender;
+
+        emit TenderAdded(msg.sender, tenderName, bidSubmissionClosingDate, bidOpeningDate, tenderDescription)
 
 
     }
 
-    function createBid( bytes32 _tenderId, uint _bidAmount) public onlyBidder() {
-        bidName = bidders[msg.sender].companyName;
-        //Check this.
-        bid_id = generateForTenderorBid((bidName + string(_tenderId)));
-        require(!bids[bid_id].exists," Only one bid can be placed by a bidder per tender");
-        require(now < tenders[_tenderId].bidSubmissionClosingDate, " Sorry, the bidding period is over");
-        bids[bid_id].tenderName = tenders[_tenderId].tenderName;
-        bids[bid_id].bidAmount = _bidAmount;
-        bids[bid_id].timeStamp = now;
-        bids[bid_id].status = BidStatus.processing; // check syntax
+    function createBid(bytes32 tenderId,uint bidAmount) public {
+
+        bidid = generateForTenderorBid((tenderId, msg.sender));
+        require(!bids[bidid].exists," Only one bid can be placed by a bidder");
+        require(now < tenders[tenderId].bidSubmissionClosingDate, " Sorry, the bidding period is over");
+        bids[bidid].tenderName = tenders[tenderId].tenderName;
+        bids[bidid].bidAmount = bidAmount;
+        bids[bidid].timeStamp = now;
+        bids[bidid].status = BidStatus.processing; // check syntax
+        
+        emit BidAdded(msg.sender, bidid, bidAmount, BidStatus.processing, timeStamp)
 
     }
 
-    function approveBid(bytes32 bid_id) onlyContractor() {
-        bids[bid_id].status = BidStatus.approved;
+    function approveBid(bytes32 bidid){
+        bids[bidid].status = BidStatus.approved;
+        emit BidStatusChanged(bidid, BidStatus.approved)
     }
 
-    function rejectBid() onlyContractor() {
-        bids[bid_id].status = BidStatus.rejected;
+    function rejectBid(bytes32 bidid){
+        bids[bidid].status = BidStatus.rejected;
+        emit BidStatusChanged(bidid, BidStatus.rejected)
         
     }
-    function negotiateBid() onlyContractor() {
-        bids[bid_id].status = BidStatus.negotiate;
+
+    function negotiateBid(bytes32 bidid){
+        bids[bidid].status = BidStatus.negotiate;
+        emit BidStatusChanged(bidid,BidStatus.negotiating)
         
     }
 
-    function getWinner(bytes32 bid_id){
-        if (bids[bid_id].status == BidStatus.approved) {
-            winner = bids[bid_id].companyAddress;
-            emit tenderEndsWithWinner(winner, bid_id);
-        }
-        else {
-            emit tenderEndsWithoutWinner();
-        }
+    function selectWinner(bytes32 bidid){
+        bids[bidid].status = BidStatus.approved;
+        emit BidStatusChanged(bidid,BidStatus.approved)
 
     }
+
+
+
+
+
+
+
+
+
 
 
 }
